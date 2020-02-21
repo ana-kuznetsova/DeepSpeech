@@ -579,7 +579,22 @@ def train():
                 # Training
                 log_progress('Training epoch %d...' % epoch)
 
-                ##CHANGE train_init_op
+                # Load CSVs into a dataframe sorting them by some column
+                #csvs = load_dataframe_from_csvs(FLAGS.train_files.split(','), sorting_function=len)
+                
+                # Create training and validation datasets
+                #train_set = create_dataset(csvs,
+                #               batch_size=FLAGS.train_batch_size,
+                #               enable_cache=FLAGS.feature_cache and do_cache_dataset,
+                #               cache_path=FLAGS.feature_cache,
+                #               train_phase=True)
+
+                #iterator = tfv1.data.Iterator.from_structure(tfv1.data.get_output_types(train_set),
+                #                                 tfv1.data.get_output_shapes(train_set),
+                #                                 output_classes=tfv1.data.get_output_classes(train_set))
+
+                # Make initialization ops for switching between the two sets
+                #train_init_op = iterator.make_initializer(train_set)
 
                 train_loss, _ = run_set('train', epoch, train_init_op)
                 log_progress('Finished training epoch %d - loss: %f' % (epoch, train_loss))
