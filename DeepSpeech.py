@@ -578,6 +578,9 @@ def train():
             for epoch in range(FLAGS.epochs):
                 # Training
                 log_progress('Training epoch %d...' % epoch)
+
+                ##CHANGE train_init_op
+
                 train_loss, _ = run_set('train', epoch, train_init_op)
                 log_progress('Finished training epoch %d - loss: %f' % (epoch, train_loss))
                 checkpoint_saver.save(session, checkpoint_path, global_step=global_step)
