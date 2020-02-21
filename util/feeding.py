@@ -106,10 +106,21 @@ def to_sparse_tuple(sequence):
     return indices, sequence, shape
 
 
-def create_dataset(csvs, batch_size, enable_cache=False, cache_path=None, train_phase=False):
+def create_dataset_sorted(csvs):
+    '''
+    Creates a sorted verstion of data set which should be passed to 
+    create_dataset() function if sorting is desired.
+    '''
+
     df = read_csvs(csvs)
     df.sort_values(by='wav_filesize', inplace=True)
 
+    df['transcript'] = df.apply(text_to_char_array, alphabet=Config.alphabet, result_type='reduce', axis=1)
+
+    return df
+
+def create_dataset(csvs, batch_size, enable_cache=False, cache_path=None, train_phase=False):
+    df = read_csvs(csvs)
     df['transcript'] = df.apply(text_to_char_array, alphabet=Config.alphabet, result_type='reduce', axis=1)
 
     def generate_values():
