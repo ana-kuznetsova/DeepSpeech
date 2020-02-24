@@ -188,9 +188,7 @@ def update_scores(dataframe, loss_old, loss_new):
         loss_new: (float) per epoch loss from the next epoch
     '''
 
-    f_factor = min(1-((loss_old-loss_new)/loss_old),0.99)
-    print('f: ', f_factor)
-    
+    f_factor = min(1-((loss_old-loss_new)/loss_old),0.99)    
     #Update lm scores
     #alphas_lm = dataframe['lm_scores']*0.1
     alphas_lm = alpha(dataframe['lm_scores'], f_factor)
