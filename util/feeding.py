@@ -224,10 +224,10 @@ def update_scores(dataframe, loss_old, loss_new):
 
 ###########################################################################################
 
-
-def create_dataset(csvs, batch_size, enable_cache=False, cache_path=None, train_phase=False):
+#Changed reading
+def create_dataset(dataframe, batch_size, enable_cache=False, cache_path=None, train_phase=False):
     ## Loading csv files to dcreate_dataset    
-    df = read_csvs(csvs)
+    #df = read_csvs(csvs)
     df['transcript'] = df.apply(text_to_char_array, alphabet=Config.alphabet, result_type='reduce', axis=1)
 
     def generate_values():

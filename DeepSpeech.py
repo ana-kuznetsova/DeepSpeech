@@ -38,6 +38,12 @@ from util.logging import log_info, log_error, log_debug, log_progress, create_pr
 
 check_ctcdecoder_version()
 
+
+#####Curriculum Learning imports
+from util.feeding import curriculum_sampling
+from util.feeding import update_scores
+from util.feeding import alpha
+
 # Graph Creation
 # ==============
 
@@ -574,6 +580,24 @@ def train():
         best_dev_loss = float('inf')
         dev_losses = []
         epochs_without_improvement = 0
+
+        #Save epoch losses for curriculum learning
+        epoch_losses = []
+        #Score updates for curriculum learning
+        score_upd = []
+
+        #Initialize dataframe
+
+        initial_csvs = load_dataframe_from_csvs(FLAGS.train_files.split(','),\
+                                                sorting_function=len)
+        # Create training and validation datasets
+        train_set = create_dataset(csvs,
+                            batch_size=FLAGS.train_batch_size,
+                            enable_cache=FLAGS.feature_cache and do_cache_dataset,
+                            cache_path=FLAGS.feature_cache,
+                            train_phase=True)
+
+
         try:
             for epoch in range(FLAGS.epochs):
                 # Training
@@ -588,6 +612,14 @@ def train():
                 #               enable_cache=FLAGS.feature_cache and do_cache_dataset,
                 #               cache_path=FLAGS.feature_cache,
                 #               train_phase=True)
+
+                #################INITIALIZE CURRICULUM SAMPLING########
+
+                train_init_op = curriculum_sampling(train_set, 64)
+                if epoch >=1:
+                    train_init_op = update_scores(train_init_op, 
+                                            epoch_loss[epoch-1], 
+                                            epoch_loss[epoch])
 
                 #iterator = tfv1.data.Iterator.from_structure(tfv1.data.get_output_types(train_set),
                 #                                 tfv1.data.get_output_shapes(train_set),
