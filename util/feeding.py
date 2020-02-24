@@ -177,7 +177,7 @@ def alpha(z, f):
     '''
     def func(z):
         z = np.asarray(z)
-        return -np.sqrt((max(z)-z)*(max(z)+z)) + max(z)
+        return -np.sqrt((1-z)*(1+z)) + 1
     z = np.asarray(z)
     offset = func([0])
     return f*func(z) + offset
