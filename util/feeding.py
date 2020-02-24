@@ -131,6 +131,10 @@ def curriculum_sampling(dataframe, batch_size, split_array=[0.5, 0.5]):
                     to lm_ranking and compression ranking e.g. [0.3, 0.7]
     Returns: dataframe with adjusted probabilities.
     '''
+
+    df = read_csvs(csvs)
+    df['transcript'] = df.apply(text_to_char_array, alphabet=Config.alphabet, result_type='reduce', axis=1)
+
     df = dataframe.rename(columns={"path": "wav_filename", 
                             "sentence": "transcription"})
     
