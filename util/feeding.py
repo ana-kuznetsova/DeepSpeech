@@ -119,7 +119,112 @@ def create_dataset_sorted(csvs):
 
     return df
 
+########################CURRICULUM LEARNING PART ##############################
+
+def curriculum_sampling(dataframe, batch_size, split_array=[0.5, 0.5]):    
+    '''
+    Creates a new dataframe according to a distribution
+    Params: 
+        dataframe: csv_dataframe loaded into memory
+        batch_size: (int) num samples in a batch
+        split_array: list the proportion of taking samples according
+                    to lm_ranking and compression ranking e.g. [0.3, 0.7]
+    Returns: dataframe with adjusted probabilities.
+    '''
+    df = dataframe.rename(columns={"path": "wav_filename", 
+                            "sentence": "transcription"})
+    
+    cols_to_keep = ['wav_filename', 'transcription', 
+                    'lm_scores', 
+                    'compression_scores',
+                    'harmonic_mean_scores']
+    
+    df = df[cols_to_keep]
+    
+    #50/50 split
+    batches = pd.DataFrame(columns=['wav_filename', 
+                                    'lm_scores', 
+                                    'compression_scores',
+                                    'harmonic_mean_scores', 
+                                    'transcription'
+                                   ])
+    
+    while len(df) > batch_size:
+        lm_chunk = df.sample(n=int(batch_size*split_array[0]), 
+                         replace=False, weights='lm_scores', axis=0)
+        df = df.drop(lm_chunk.index)
+        comp_chunk = df.sample(n=int(batch_size*split_array[1]), 
+                         replace=False, weights='compression_scores', axis=0)
+        df = df.drop(comp_chunk.index)
+        
+        batch = pd.concat([lm_chunk, comp_chunk], axis=0, ignore_index=True)
+
+        batches = pd.concat([batches, batch], axis=0, ignore_index=True)
+        
+    if len(df) > 0:
+        batches = pd.concat([batches, df], axis=0, ignore_index=True)
+        
+    return batches
+
+def alpha(z, f):
+    '''
+    Calculates alpha score to be subtracted from original
+    lm, hm, compression scores.
+    '''
+    def func(z):
+        z = np.asarray(z)
+        return -np.sqrt((max(z)-z)*(max(z)+z)) + max(z)
+    z = np.asarray(z)
+    offset = func([0])
+    return f*func(z) + offset
+
+def update_scores(dataframe, loss_old, loss_new):
+    '''
+    Updates lm, hm, compression scores per epoch 
+    starting the second epoch
+    Params:
+        dataframe: (pd.DataFrame) resampled curriculum dataframe
+        loss_old: (float) per epoch loss from the previous epoch
+        loss_new: (float) per epoch loss from the next epoch
+    '''
+
+    f_factor = min(1-((loss_old-loss_new)/loss_old),0.99)
+    print('f: ', f_factor)
+    
+    #Update lm scores
+    #alphas_lm = dataframe['lm_scores']*0.1
+    alphas_lm = alpha(dataframe['lm_scores'], f_factor)
+    updated_lm_scores = dataframe['lm_scores'] - alphas_lm
+    dataframe['lm_scores'] = updated_lm_scores
+    #Normalize lm scores
+    lm_sum = sum(updated_lm_scores)
+    print(lm_sum)
+    dataframe['lm_scores'] = [score/lm_sum for score in updated_lm_scores]
+    
+    #Update compression scores
+    #alphas_comp = dataframe['compression_scores']*f_factor
+    alphas_comp = alpha(dataframe['compression_scores'], f_factor)
+    updated_comp_scores = dataframe['compression_scores'] - alphas_comp
+    dataframe['compression_scores'] = updated_comp_scores
+    comp_sum = sum(updated_comp_scores)
+    dataframe['compression_scores'] = [score/comp_sum for score in updated_comp_scores]
+    
+    #print(alphas_lm, alphas_comp)
+    #update HM
+    alphas_hm = dataframe['harmonic_mean_scores']*f_factor
+    updated_hm_scores = dataframe['harmonic_mean_scores'] - alphas_hm
+    dataframe['harmonic_mean_scores'] = updated_comp_scores
+    hm_sum = sum(updated_hm_scores)
+    dataframe['harmonic_mean_scores'] = [score/hm_sum for score in updated_hm_scores]
+    
+    
+    return dataframe
+
+###########################################################################################
+
+
 def create_dataset(csvs, batch_size, enable_cache=False, cache_path=None, train_phase=False):
+    ## Loading csv files to dcreate_dataset    
     df = read_csvs(csvs)
     df['transcript'] = df.apply(text_to_char_array, alphabet=Config.alphabet, result_type='reduce', axis=1)
 
